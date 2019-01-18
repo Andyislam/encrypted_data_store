@@ -7,10 +7,8 @@ class RotateWorker
 
   	def perform(*args)
 
-      # delay the job in testing
-      if Rails.env == "test"
-        sleep(30.seconds)
-      end
+      
+    
 	  	# create a new key
   		@new_data_encrypting_key = DataEncryptingKey.generate!(primary: true)
   		# set all old keys primary to false
@@ -20,5 +18,6 @@ class RotateWorker
   			s.update!(data_encrypting_key: @new_data_encrypting_key, value: decrypted_string)
   		end
   		DataEncryptingKey.where.not(id: @new_data_encrypting_key.id).destroy_all
+
   	end
 end

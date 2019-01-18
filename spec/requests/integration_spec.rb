@@ -2,7 +2,7 @@ require 'spec_helper'
 require 'rails_helper'
 require 'sidekiq/api'
 require 'sidekiq/testing'
-Sidekiq::Testing.disable! 
+Sidekiq::Testing.fake! 
 
 
 
@@ -17,7 +17,7 @@ describe "Integration test" do
 		@key = DataEncryptingKey.generate!(primary: true)
 		
 		# "create 1500 dummy records" 
-		(1..100).each do |i|
+		(1..1500).each do |i|
 			EncryptedString.create!(value: "Test string #{i}")
 		end
 	end
@@ -29,7 +29,7 @@ describe "Integration test" do
 		end
 
 		it "should increment DataEncryptingKey records to 1500" do 
-			expect(EncryptedString.all.count).to eq(100)
+			expect(EncryptedString.all.count).to eq(1500)
 		end
 	end
 
@@ -38,6 +38,8 @@ describe "Integration test" do
 		before :each do 
 			RotateWorker.clear
 			post "/api/v1/data_encrypting_keys/rotate"
+			# this forces the workers to execute in test
+			Sidekiq::Worker.drain_all
 		end
 		it "has a 201 status code" do 
 			expect(response.status).to eq(201)
@@ -49,9 +51,9 @@ describe "Integration test" do
 
 		context "poll status until" do 
 			it "returns No key rotation queued or in progress" do 
-				get "/api/v1/data_encrypting_keys/rotate/status"
-		  		json = JSON.parse(response.body)
 				begin
+					get "/api/v1/data_encrypting_keys/rotate/status"
+		  			json = JSON.parse(response.body)
 					puts "Rotate Job is in progress, retrying in 5 seconds"
 				  	sleep(5.seconds)
 				end while json['message'] != "No key rotation queued or in progress"
